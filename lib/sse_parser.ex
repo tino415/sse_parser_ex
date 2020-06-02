@@ -4,6 +4,8 @@ defmodule SseParser do
   ref: https://www.w3.org/TR/2009/WD-eventsource-20090421
 
   ABNF:
+
+  ```abnf
     stream        = [ bom ] *event
     event         = *( comment / field ) end-of-line
     comment       = colon *any-char end-of-line
@@ -21,6 +23,7 @@ defmodule SseParser do
                     ; a Unicode character other than U+000A LINE FEED, U+000D CARRIAGE RETURN, or U+003A COLON
     any-char      = %x0000-0009 / %x000B-000C / %x000E-10FFFF
                     ; a Unicode character other than U+000D CARRIAGE RETURN or U+003A COLON
+  ```
   """
 
   @type field() :: {:field, [name: String.t(), data: String.t()] | [name: String.t()]}
