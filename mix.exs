@@ -1,14 +1,19 @@
 defmodule SseParser.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+  @repo_url "https://github.com/tino415/sse_parser_ex"
+
   def project do
     [
       app: :sse_parser,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.9",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      package: package(),
+      description: "Parser for server sent event acording w3c"
     ]
   end
 
@@ -30,6 +35,13 @@ defmodule SseParser.MixProject do
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:credo, "~> 1.1.0", only: [:dev, :test], runtime: false}
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["MIT"],
+      links: %{"GitHub" => @repo_url}
     ]
   end
 end
