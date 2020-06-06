@@ -31,6 +31,13 @@ defmodule SseParser do
   @type event() :: [field() | comment()]
   @type error() :: {:error, String.t(), String.t(), map(), {integer(), integer()}, integer()}
 
+  @type interpreted_event() :: [(
+    {:id, String.t()}
+    | {:event, String.t()}
+    | {:data, String.t()}
+    | {:retry, integer()}
+  )]
+
   import NimbleParsec
 
   lf = utf8_char([0x0A])
@@ -145,6 +152,27 @@ defmodule SseParser do
          {:ok, events, _rest, _context, _link, _column} <- stream |> to_string() |> event_parser() do
       {:ok, events, rest}
     end
+  end
+
+  @spec interpret([event()]) :: [interpreted_event()]
+  def interpret(events) do
+    Enum.map(events, fn e ->
+      Enum.reduce([], fn 
+        {"id", id}, event -> 
+          Keyword.put(event, :id, id)
+        {"event", name}, event -> 
+          Keyword.put(event, :event, name)
+        {"data", data}, event -> 
+          Keyword.update(event, :data, data, & "#{&1}\n#{data}")
+        {"retry", interval}, event ->
+          case Integer.parse(interval) do
+            {value, ""} -> Keyword.put(event, :retry, interval)
+            _ -> event
+          end
+        _, event ->
+          event 
+      end)
+    end)
   end
 
   defp stringify(_rest, args, context, _line, _offset) do
