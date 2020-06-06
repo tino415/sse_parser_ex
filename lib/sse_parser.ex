@@ -26,8 +26,8 @@ defmodule SseParser do
   ```
   """
 
-  @type field() :: {:field, [name: String.t(), data: String.t()] | [name: String.t()]}
-  @type comment() :: {:comment, String.t()}
+  @type field() :: {String.t(), (String.t() | nil)}
+  @type comment() :: String.t()
   @type event() :: [field() | comment()]
   @type error() :: {:error, String.t(), String.t(), map(), {integer(), integer()}, integer()}
 
@@ -100,6 +100,7 @@ defmodule SseParser do
     repeat(choice([comment, field]))
     |> ignore(end_of_line)
     |> tag(:event)
+    |> post_traverse({:escape_event, []})
     |> repeat()
     |> eos()
 
@@ -126,7 +127,7 @@ defmodule SseParser do
   ## Examples
 
   iex> SseParser.feed(":Order 3 submitted\nevent: order-submitted\nreference: order 3\n\n")
-  {:ok, [event: [comment: "Order 3 submitted", field: [name: "event", value: "order-submitted"], field: [name: "reference", value: "order 3"]]], ""}
+  {:ok, [["Order 3 submitted", {"event", "order-submitted"}, {"reference", "order 3"}]], ""}
 
   iex> SseParser.feed(":Test event")
   {:ok, [], ":Test event"}
@@ -134,7 +135,7 @@ defmodule SseParser do
   iex> {:ok, [], rest} = SseParser.feed(":Test event")
   iex> {:ok, [], rest} = SseParser.feed(rest <> "\nname: test")
   iex> SseParser.feed(rest <> "\n\n")
-  {:ok, [event: [comment: "Test event", field: [name: "name", value: "test"]]], ""}
+  {:ok, [["Test event", {"name", "test"}]], ""}
   """
   @type feed_error() :: {:error, String.t(), String.t(), map(), {integer(), integer()}, integer()}
   @type feed_success() :: {:ok, [event()], String.t()}
@@ -150,5 +151,16 @@ defmodule SseParser do
     args = Enum.map(args, &{elem(&1, 0), &1 |> elem(1) |> to_string()})
 
     {args, context}
+  end
+
+  defp escape_event(_rest, [event: parts], context, _line, _offset) do
+    parts =
+      Enum.map(parts, fn
+        {:comment, comment} -> comment
+        {:field, [name: name]} -> {name, nil}
+        {:field, [name: name, value: value]} -> {name, value}
+      end)
+
+    {[parts], context}
   end
 end
