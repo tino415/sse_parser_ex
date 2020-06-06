@@ -8,6 +8,7 @@ defmodule SseParserTest do
   describe "documentation cases" do
     test "sample feed and interpret" do
       result = SseParser.feed_and_interpret("event: put\ndata: {\"name\": \"Testovic\"}\n\n")
+
       expected = [
         [
           event: "put",
@@ -20,10 +21,11 @@ defmodule SseParserTest do
 
     test "sample feed" do
       result = SseParser.feed(":Put event\nevent: put\ndata: {\"name\": \"Testovic\"}\n\n")
+
       expected = [
         [
-          "Put event", 
-          {"event", "put"}, 
+          "Put event",
+          {"event", "put"},
           {"data", "{\"name\": \"Testovic\"}"}
         ]
       ]
@@ -32,7 +34,11 @@ defmodule SseParserTest do
     end
 
     test "sample interpret" do
-      result = SseParser.interpret([["Put event", {"event", "put"}, {"data", "{\"name\": \"Testovic\"}"}]])
+      result =
+        SseParser.interpret([
+          ["Put event", {"event", "put"}, {"data", "{\"name\": \"Testovic\"}"}]
+        ])
+
       expected = [
         [
           event: "put",
