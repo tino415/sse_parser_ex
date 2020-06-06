@@ -31,12 +31,12 @@ defmodule SseParser do
   @type event() :: [field() | comment()]
   @type error() :: {:error, String.t(), String.t(), map(), {integer(), integer()}, integer()}
 
-  @type interpreted_event() :: [(
-    {:id, String.t()}
-    | {:event, String.t()}
-    | {:data, String.t()}
-    | {:retry, integer()}
-  )]
+  @type interpreted_event() :: [
+          {:id, String.t()}
+          | {:event, String.t()}
+          | {:data, String.t()}
+          | {:retry, integer()}
+        ]
 
   import NimbleParsec
 
@@ -133,16 +133,17 @@ defmodule SseParser do
 
   ## Examples
 
-  iex> SseParser.feed(":Order 3 submitted\nevent: order-submitted\nreference: order 3\n\n")
-  {:ok, [["Order 3 submitted", {"event", "order-submitted"}, {"reference", "order 3"}]], ""}
+      iex> SseParser.feed(":Order 3 submitted\nevent: order-submitted\nreference: order 3\n\n")
+      {:ok, [["Order 3 submitted", {"event", "order-submitted"}, {"reference", "order 3"}]], ""}
 
-  iex> SseParser.feed(":Test event")
-  {:ok, [], ":Test event"}
+      iex> SseParser.feed(":Test event")
+      {:ok, [], ":Test event"}
 
-  iex> {:ok, [], rest} = SseParser.feed(":Test event")
-  iex> {:ok, [], rest} = SseParser.feed(rest <> "\nname: test")
-  iex> SseParser.feed(rest <> "\n\n")
-  {:ok, [["Test event", {"name", "test"}]], ""}
+      iex> {:ok, [], rest} = SseParser.feed(":Test event")
+      iex> {:ok, [], rest} = SseParser.feed(rest <> "\nname: test")
+      iex> SseParser.feed(rest <> "\n\n")
+      {:ok, [["Test event", {"name", "test"}]], ""}
+
   """
   @type feed_error() :: {:error, String.t(), String.t(), map(), {integer(), integer()}, integer()}
   @type feed_success() :: {:ok, [event()], String.t()}
@@ -154,25 +155,60 @@ defmodule SseParser do
     end
   end
 
+  @doc """
+  Interpreting parsed event stream acording to standard
+  - comment is ignored
+  - field id is reduced to last received value
+  - field event is reduced to last received value
+  - field retry is reduced to last received value that is integer
+  - field data is join by newline
+  - any other field is ignored
+
+  In every case, event without value `{name, nil}` is ignored
+
+  ## Examples
+
+      iex> SseParser.interpret([[{"data", "d1"}, {"data", "d2"}, {"event", "put"}, {"event", "patch"}, {"event", nil}]])
+      [[event: "patch", data: "d1\\nd2"]]
+
+  """
   @spec interpret([event()]) :: [interpreted_event()]
   def interpret(events) do
-    Enum.map(events, fn e ->
-      Enum.reduce([], fn 
-        {"id", id}, event -> 
+    Enum.map(events, fn parts ->
+      Enum.reduce(parts, [], fn
+        {"id", id}, event when is_bitstring(id) ->
           Keyword.put(event, :id, id)
-        {"event", name}, event -> 
+
+        {"event", name}, event when is_bitstring(name) ->
           Keyword.put(event, :event, name)
-        {"data", data}, event -> 
-          Keyword.update(event, :data, data, & "#{&1}\n#{data}")
-        {"retry", interval}, event ->
-          case Integer.parse(interval) do
-            {value, ""} -> Keyword.put(event, :retry, interval)
-            _ -> event
-          end
+
+        {"data", data}, event when is_bitstring(data) ->
+          Keyword.update(event, :data, data, &"#{&1}\n#{data}")
+
+        {"retry", interval}, event when is_bitstring(interval) ->
+          interpret_interval(event, interval)
+
         _, event ->
-          event 
+          event
       end)
     end)
+  end
+
+  @doc ~S"""
+  First feed data to parser and then interpret, see `SseParser.feed/1` and `SseParser.interpret/1`
+
+  # Examples
+
+      iex> SseParser.feed_and_interpret(":Order 3 submitted\nevent: order-submitted\nid: 3\n\n")
+      {:ok, [[id: "3", event: "order-submitted"]], ""}
+
+  """
+  @type feed_and_interpret_success() :: {:ok, [interpreted_event()], String.t()}
+  @spec feed_and_interpret(String.t()) :: feed_and_interpret_success() | feed_error()
+  def feed_and_interpret(data) do
+    with {:ok, events, buffer} <- feed(data) do
+      {:ok, interpret(events), buffer}
+    end
   end
 
   defp stringify(_rest, args, context, _line, _offset) do
@@ -190,5 +226,12 @@ defmodule SseParser do
       end)
 
     {[parts], context}
+  end
+
+  defp interpret_interval(event, interval) do
+    case Integer.parse(interval) do
+      {interval, ""} -> Keyword.put(event, :retry, interval)
+      _ -> event
+    end
   end
 end

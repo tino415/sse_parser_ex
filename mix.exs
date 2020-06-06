@@ -1,7 +1,7 @@
 defmodule SseParser.MixProject do
   use Mix.Project
 
-  @version "1.0.0"
+  @version "1.1.0"
   @repo_url "https://github.com/tino415/sse_parser_ex"
 
   def project do
