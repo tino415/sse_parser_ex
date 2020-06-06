@@ -26,7 +26,7 @@ defmodule SseParser do
   ```
   """
 
-  @type field() :: {String.t(), (String.t() | nil)}
+  @type field() :: {String.t(), String.t() | nil}
   @type comment() :: String.t()
   @type event() :: [field() | comment()]
   @type error() :: {:error, String.t(), String.t(), map(), {integer(), integer()}, integer()}
