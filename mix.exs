@@ -13,7 +13,14 @@ defmodule SseParser.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      description: "Parser for server sent event acording w3c"
+      source_url: @repo_url,
+      description: "Parser for server sent event according to w3c",
+      name: "SseParser",
+      docs: [
+        extras: [
+          "README.md"
+        ]
+      ]
     ]
   end
 

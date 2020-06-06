@@ -5,6 +5,45 @@ defmodule SseParserTest do
 
   doctest SseParser
 
+  describe "documentation cases" do
+    test "sample feed and interpret" do
+      result = SseParser.feed_and_interpret("event: put\ndata: {\"name\": \"Testovic\"}\n\n")
+      expected = [
+        [
+          event: "put",
+          data: "{\"name\": \"Testovic\"}"
+        ]
+      ]
+
+      assert {:ok, expected, ""} == result
+    end
+
+    test "sample feed" do
+      result = SseParser.feed(":Put event\nevent: put\ndata: {\"name\": \"Testovic\"}\n\n")
+      expected = [
+        [
+          "Put event", 
+          {"event", "put"}, 
+          {"data", "{\"name\": \"Testovic\"}"}
+        ]
+      ]
+
+      assert {:ok, expected, ""} == result
+    end
+
+    test "sample interpret" do
+      result = SseParser.interpret([["Put event", {"event", "put"}, {"data", "{\"name\": \"Testovic\"}"}]])
+      expected = [
+        [
+          event: "put",
+          data: "{\"name\": \"Testovic\"}"
+        ]
+      ]
+
+      assert expected == result
+    end
+  end
+
   test "parse partly incomplete stream" do
     assert {:ok, [], rest} = feed("event: put\ndata:")
     assert {:ok, [], rest} = feed(rest <> "the data part")
