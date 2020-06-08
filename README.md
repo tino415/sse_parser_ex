@@ -13,7 +13,7 @@ by adding `sse_parser` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:sse_parser, "~> 2.0.0"}
+    {:sse_parser, "~> 2.0.1"}
   ]
 end
 ```
@@ -26,10 +26,10 @@ chunk from `SSE` source and it will return parsed and reduced events
 ```elixir
 iex> SseParser.feed_and_interpret("event: put\ndata: {\"name\": \"Testovic\"}\n\n")
 {:ok, [
-  [
+  %SseParser.Event{
     event: "put",
     data: "{\"name\": \"Testovic\"}"
-  ]
+  }
 ], ""}
 ```
 
@@ -48,10 +48,10 @@ iex> SseParser.feed(":Put event\nevent: put\ndata: {\"name\": \"Testovic\"}\n\n"
 ```elixir
 iex> SseParser.interpret([["Put event", {"event", "put"}, {"data", "{\"name\": \"Testovic\"}"}]])
 [
-  [
+  %SseParser.Event{
     event: "put",
     data: "{\"name\": \"Testovic\"}"
-  ]
+  }
 ]
 ```
 
