@@ -1,4 +1,5 @@
 defmodule SseParserTest do
+  alias SseParser.Event
   import SseParser
 
   use ExUnit.Case
@@ -10,10 +11,10 @@ defmodule SseParserTest do
       result = SseParser.feed_and_interpret("event: put\ndata: {\"name\": \"Testovic\"}\n\n")
 
       expected = [
-        [
+        %Event{
           event: "put",
           data: "{\"name\": \"Testovic\"}"
-        ]
+        }
       ]
 
       assert {:ok, expected, ""} == result
@@ -40,10 +41,10 @@ defmodule SseParserTest do
         ])
 
       expected = [
-        [
+        %Event{
           event: "put",
           data: "{\"name\": \"Testovic\"}"
-        ]
+        }
       ]
 
       assert expected == result
