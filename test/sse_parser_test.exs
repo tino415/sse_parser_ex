@@ -102,12 +102,10 @@ defmodule SseParserTest do
     ]
 
     assert [event1, event2] = SseParser.interpret(sample)
-    assert 4 == length(event1)
-    assert 1 == length(event2)
-    assert ["patch"] == Keyword.get_values(event1, :event)
-    assert ["d1\nd2"] == Keyword.get_values(event1, :data)
-    assert ["id"] == Keyword.get_values(event1, :id)
-    assert [10] == Keyword.get_values(event1, :retry)
-    assert ["second"] == Keyword.get_values(event2, :event)
+    assert "patch" == event1.event
+    assert "d1\nd2" == event1.data
+    assert "id" == event1.id
+    assert 10 == event1.retry
+    assert "second" == event2.event
   end
 end

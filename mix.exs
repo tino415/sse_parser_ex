@@ -1,7 +1,7 @@
 defmodule SseParser.MixProject do
   use Mix.Project
 
-  @version "1.1.1"
+  @version "2.0.0"
   @repo_url "https://github.com/tino415/sse_parser_ex"
 
   def project do
@@ -13,6 +13,7 @@ defmodule SseParser.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
+      aliases: aliases(),
       source_url: @repo_url,
       description: "Parser for server sent event according to w3c",
       name: "SseParser",
@@ -39,6 +40,8 @@ defmodule SseParser.MixProject do
   defp deps do
     [
       {:nimble_parsec, "~> 0.5"},
+      {:typed_struct, "~> 0.2.0"},
+      {:ts_access, "~> 0.7.0"},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:credo, "~> 1.1.0", only: [:dev, :test], runtime: false}
@@ -50,5 +53,21 @@ defmodule SseParser.MixProject do
       licenses: ["MIT"],
       links: %{"GitHub" => @repo_url}
     ]
+  end
+
+  defp aliases() do
+    [
+      format_and_check: [
+        "format",
+        "dialyzer",
+        &test/1,
+        "credo"
+      ]
+    ]
+  end
+
+  defp test(_) do
+    Mix.env(:test)
+    Mix.Task.run("test")
   end
 end
