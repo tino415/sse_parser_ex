@@ -26,17 +26,12 @@ defmodule SseParser do
   ```
   """
 
+  alias SseParser.Event
+
   @type field() :: {String.t(), String.t() | nil}
   @type comment() :: String.t()
   @type event() :: [field() | comment()]
   @type error() :: {:error, String.t(), String.t(), map(), {integer(), integer()}, integer()}
-
-  @type interpreted_event() :: [
-          {:id, String.t()}
-          | {:event, String.t()}
-          | {:data, String.t()}
-          | {:retry, integer()}
-        ]
 
   import NimbleParsec
 
@@ -169,23 +164,23 @@ defmodule SseParser do
   ## Examples
 
       iex> SseParser.interpret([[{"data", "d1"}, {"data", "d2"}, {"event", "put"}, {"event", "patch"}, {"event", nil}]])
-      [[event: "patch", data: "d1\\nd2"]]
+      [%SseParser.Event{event: "patch", data: "d1\\nd2"}]
 
   """
-  @spec interpret([event()]) :: [interpreted_event()]
+  @spec interpret([event()]) :: [Event.t()]
   def interpret(events) do
     Enum.map(events, fn parts ->
-      Enum.reduce(parts, [], fn
-        {"id", id}, event when is_bitstring(id) ->
-          Keyword.put(event, :id, id)
+      Enum.reduce(parts, %Event{}, fn
+        {"id", id}, event when is_bitstring(id) and bit_size(id) > 0 ->
+          %Event{event | id: id}
 
-        {"event", name}, event when is_bitstring(name) ->
-          Keyword.put(event, :event, name)
+        {"event", name}, event when is_bitstring(name) and bit_size(name) > 0 ->
+          %Event{event | event: name}
 
-        {"data", data}, event when is_bitstring(data) ->
-          Keyword.update(event, :data, data, &"#{&1}\n#{data}")
+        {"data", data}, event when is_bitstring(data) and bit_size(data) > 0 ->
+          interpret_data(event, data)
 
-        {"retry", interval}, event when is_bitstring(interval) ->
+        {"retry", interval}, event when is_bitstring(interval) and bit_size(interval) > 0 ->
           interpret_interval(event, interval)
 
         _, event ->
@@ -200,10 +195,10 @@ defmodule SseParser do
   # Examples
 
       iex> SseParser.feed_and_interpret(":Order 3 submitted\nevent: order-submitted\nid: 3\n\n")
-      {:ok, [[id: "3", event: "order-submitted"]], ""}
+      {:ok, [%SseParser.Event{id: "3", event: "order-submitted"}], ""}
 
   """
-  @type feed_and_interpret_success() :: {:ok, [interpreted_event()], String.t()}
+  @type feed_and_interpret_success() :: {:ok, [Event.t()], String.t()}
   @spec feed_and_interpret(String.t()) :: feed_and_interpret_success() | feed_error()
   def feed_and_interpret(data) do
     with {:ok, events, buffer} <- feed(data) do
@@ -230,8 +225,18 @@ defmodule SseParser do
 
   defp interpret_interval(event, interval) do
     case Integer.parse(interval) do
-      {interval, ""} -> Keyword.put(event, :retry, interval)
+      {interval, ""} -> %{event | retry: interval}
       _ -> event
+    end
+  end
+
+  defp interpret_data(event, data) do
+    case event do
+      %Event{data: d} when d in [nil, ""] ->
+        %Event{event | data: data}
+
+      event ->
+        %Event{event | data: "#{event.data}\n#{data}"}
     end
   end
 end

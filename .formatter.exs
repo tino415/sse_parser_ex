@@ -1,4 +1,5 @@
 # Used by "mix format"
 [
-  inputs: ["{mix,.formatter}.exs", "{config,lib,test,support,scripts}/**/*.{ex,exs}"]
+  inputs: ["{mix,.formatter}.exs", "{config,lib,test,support,scripts}/**/*.{ex,exs}"],
+  import_deps: [:typed_struct]
 ]
