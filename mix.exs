@@ -1,7 +1,7 @@
 defmodule SseParser.MixProject do
   use Mix.Project
 
-  @version "2.0.1"
+  @version "3.0.0"
   @repo_url "https://github.com/tino415/sse_parser_ex"
 
   def project do
@@ -40,8 +40,8 @@ defmodule SseParser.MixProject do
   defp deps do
     [
       {:nimble_parsec, "~> 0.5"},
-      {:typed_struct, "~> 0.2.0"},
-      {:ts_access, "~> 0.7.0"},
+      {:typed_struct, "~> 0.2"},
+      {:ts_access, "~> 1.0"},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:credo, "~> 1.1.0", only: [:dev, :test], runtime: false}
