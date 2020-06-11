@@ -20,17 +20,24 @@ end
 
 ## Usage
 
-Simplest way to use this librari is using `SseParser.feed_and_interpret/1` interface. You pass
-chunk from `SSE` source and it will return parsed and reduced events
+Simplest way to use this librari is using `SseParser.feed_interpret_stream/2` interface. You pass
+chunk from `SSE` source and stream from previous events and it will return parsed and reduced events
+with stream:
 
 ```elixir
-iex> SseParser.feed_and_interpret("event: put\ndata: {\"name\": \"Testovic\"}\n\n")
-{:ok, [
-  %SseParser.Event{
-    event: "put",
-    data: "{\"name\": \"Testovic\"}"
-  }
-], ""}
+iex> SseParser.feed_interpret_stream("id: 1\nevent: put\ndata: test\n\nevent: patch\n", %Stream{})
+{
+  :ok, 
+  [
+    %Event{
+      id: "1",
+      event: "put",
+      data: "test"
+    }
+  ], 
+  "event: patch\n", 
+  %Stream{last_event_id: "1"}
+}
 ```
 
 It is also posible to use this interface partiali, because interpret 
@@ -55,3 +62,29 @@ iex> SseParser.interpret([["Put event", {"event", "put"}, {"data", "{\"name\": \
 ]
 ```
 
+Aggregate `SSE` stream:
+
+```elixir
+iex> SseParser.streamify(%Stream{}, [%SseParser.Event{event: "put", id: "1", data: "test"}])
+{
+  [
+    %SseParser.Event{
+      event: "put", 
+      id: "1", 
+      data: "test"
+    }
+  ], 
+  %Stream{last_event_id: "1"}
+}
+```
+There is also function that is doing first two steps together:
+
+```elixir
+iex> SseParser.feed_and_interpret("event: put\ndata: {\"name\": \"Testovic\"}\n\n")
+{:ok, [
+  %SseParser.Event{
+    event: "put",
+    data: "{\"name\": \"Testovic\"}"
+  }
+], ""}
+```

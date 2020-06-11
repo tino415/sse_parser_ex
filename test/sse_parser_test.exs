@@ -1,5 +1,5 @@
 defmodule SseParserTest do
-  alias SseParser.Event
+  alias SseParser.{Event, Stream}
   import SseParser
 
   use ExUnit.Case
@@ -7,6 +7,24 @@ defmodule SseParserTest do
   doctest SseParser
 
   describe "documentation cases" do
+    test "sample feed interpret stream" do
+      result =
+        SseParser.feed_interpret_stream(
+          "id: 1\nevent: put\ndata: test\n\nevent: patch\n",
+          %Stream{}
+        )
+
+      expected = [
+        %Event{
+          id: "1",
+          event: "put",
+          data: "test"
+        }
+      ]
+
+      assert {:ok, expected, "event: patch\n", %Stream{last_event_id: "1"}} == result
+    end
+
     test "sample feed and interpret" do
       result = SseParser.feed_and_interpret("event: put\ndata: {\"name\": \"Testovic\"}\n\n")
 
@@ -48,6 +66,24 @@ defmodule SseParserTest do
       ]
 
       assert expected == result
+    end
+
+    test "sample streamify" do
+      result =
+        SseParser.streamify(%Stream{}, [%SseParser.Event{event: "put", id: "1", data: "test"}])
+
+      expected = {
+        [
+          %SseParser.Event{
+            event: "put",
+            id: "1",
+            data: "test"
+          }
+        ],
+        %Stream{last_event_id: "1"}
+      }
+
+      assert result == expected
     end
   end
 
@@ -108,5 +144,95 @@ defmodule SseParserTest do
     assert "id" == event1.id
     assert 10 == event1.retry
     assert "second" == event2.event
+  end
+
+  test "streamify events" do
+    events = [
+      %Event{
+        id: "test1",
+        event: "put",
+        data: "test 1"
+      },
+      %Event{
+        event: "patch",
+        retry: 1234
+      },
+      %Event{
+        data: "jojoj"
+      },
+      %Event{
+        id: "test2",
+        event: "aaa",
+        data: "less"
+      },
+      %Event{
+        event: "+"
+      }
+    ]
+
+    stream = %Stream{}
+
+    {result_events, result_stream} = SseParser.streamify(stream, events)
+
+    expected_events = [
+      %Event{
+        id: "test1",
+        event: "put",
+        data: "test 1",
+        retry: nil
+      },
+      %Event{
+        id: "test1",
+        event: "patch",
+        data: nil,
+        retry: 1234
+      },
+      %Event{
+        id: "test1",
+        event: nil,
+        data: "jojoj",
+        retry: nil
+      },
+      %Event{
+        id: "test2",
+        event: "aaa",
+        data: "less",
+        retry: nil
+      },
+      %Event{
+        id: "test2",
+        event: "+",
+        data: nil,
+        retry: nil
+      }
+    ]
+
+    assert expected_events == result_events
+    assert %Stream{last_event_id: "test2", retry: 1234} == result_stream
+  end
+
+  test "feed_interpret_stream/2" do
+    stream = %Stream{}
+    feed = "id: 1\nevent: test\n\nretry: 3\n\nevent: put\ndata: test\n\n"
+
+    expected_events = [
+      %Event{
+        id: "1",
+        event: "test"
+      },
+      %Event{
+        id: "1",
+        retry: 3
+      },
+      %Event{
+        id: "1",
+        event: "put",
+        data: "test"
+      }
+    ]
+
+    assert {:ok, result_events, "", result_stream} = SseParser.feed_interpret_stream(feed, stream)
+    assert expected_events == result_events
+    assert %Stream{last_event_id: "1", retry: 3} == result_stream
   end
 end
