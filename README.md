@@ -13,7 +13,7 @@ by adding `sse_parser` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:sse_parser, "~> 3.0.0"}
+    {:sse_parser, "~> 3.1.1"}
   ]
 end
 ```
