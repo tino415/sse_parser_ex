@@ -26,7 +26,7 @@ defmodule SseParser do
   ```
   """
 
-  alias SseParser.Event
+  alias SseParser.{Event, Stream}
 
   @type field() :: {String.t(), String.t() | nil}
   @type comment() :: String.t()
@@ -190,6 +190,50 @@ defmodule SseParser do
   end
 
   @doc ~S"""
+  Reduce events to update stream
+
+  ## Examples
+
+      iex> SseParser.streamify(%Stream{}, [
+      iex>  %SseParser.Event{
+      iex>     id: "1",
+      iex>     event: "a"     
+      iex>  },
+      iex>  %SseParser.Event{
+      iex>     event: "b",
+      iex>     retry: 2345
+      iex>  }
+      iex>])
+      {
+        [
+          %SseParser.Event{id: "1", event: "a"}, 
+          %SseParser.Event{id: "1", event: "b", retry: 2345}
+        ], 
+        %SseParser.Stream{last_event_id: "1", retry: 2345}
+      }
+  """
+  @doc since: "3.1.0"
+  @spec streamify(Stream.t(), [Event.t()]) :: {[Event.t()], Stream.t()}
+  def streamify(stream, events) do
+    stream =
+      Enum.reduce(events, stream, fn event, stream ->
+        if is_nil(Event.retry(event)) do
+          stream
+        else
+          Stream.retry(stream, Event.retry(event))
+        end
+      end)
+
+    Enum.map_reduce(events, stream, fn event, stream ->
+      if is_nil(Event.id(event)) do
+        {Event.id(event, Stream.last_event_id(stream)), stream}
+      else
+        {event, Stream.last_event_id(stream, Event.id(event))}
+      end
+    end)
+  end
+
+  @doc ~S"""
   First feed data to parser and then interpret, see `SseParser.feed/1` and `SseParser.interpret/1`
 
   # Examples
@@ -203,6 +247,43 @@ defmodule SseParser do
   def feed_and_interpret(data) do
     with {:ok, events, buffer} <- feed(data) do
       {:ok, interpret(events), buffer}
+    end
+  end
+
+  @doc ~S"""
+  Appli feed, interpret and streamify on string
+
+  # Examples
+
+      iex> SseParser.feed_interpret_stream("id: a\nevent: b\ndata: c\n\nevent: d\n\n", %Stream{})
+      {
+        :ok,
+        [
+          %SseParser.Event{
+            id: "a",
+            event: "b",
+            data: "c"
+          },
+          %SseParser.Event{
+            id: "a",
+            event: "d"
+          }
+        ],
+        "",
+        %SseParser.Stream{
+          last_event_id: "a"
+        }
+      }
+
+  """
+  @doc since: "3.1.0"
+  @type feed_interpret_stream_success() :: {:ok, [Event.t()], String.t(), Stream.t()}
+  @spec feed_interpret_stream(String.t(), Stream.t()) ::
+          feed_interpret_stream_success() | feed_error()
+  def feed_interpret_stream(data, stream) do
+    with {:ok, events, buffer} <- feed_and_interpret(data),
+         {events, stream} <- streamify(stream, events) do
+      {:ok, events, buffer, stream}
     end
   end
 
