@@ -217,18 +217,18 @@ defmodule SseParser do
   def streamify(stream, events) do
     stream =
       Enum.reduce(events, stream, fn event, stream ->
-        if is_nil(Event.retry(event)) do
+        if is_nil(event.retry) do
           stream
         else
-          Stream.retry(stream, Event.retry(event))
+          %Stream{stream | retry: event.retry}
         end
       end)
 
     Enum.map_reduce(events, stream, fn event, stream ->
-      if is_nil(Event.id(event)) do
-        {Event.id(event, Stream.last_event_id(stream)), stream}
+      if is_nil(event.id) do
+        {%Event{event | id: stream.last_event_id}, stream}
       else
-        {event, Stream.last_event_id(stream, Event.id(event))}
+        {event, %Stream{stream | last_event_id: event.id}}
       end
     end)
   end
